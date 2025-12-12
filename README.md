@@ -61,7 +61,7 @@
 
 ### 🚀 Запуск
 
-Зайди на сайт: 
+Зайди на сайт: https://abobus307.github.io/honeydevgame.github.io/
 
 
 
@@ -126,4 +126,4 @@ Language switch is in the top-right corner.
 
 ### 🚀 Run
 
-Open the website:
+Go to the website: https://abobus307.github.io/honeydevgame.github.io/
