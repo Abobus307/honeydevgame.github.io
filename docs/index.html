@@ -1358,15 +1358,16 @@ function drawHUD(){
   const autoLine = state.autoPlay ? t("autoOn") : t("autoOff");
 
   hud.innerHTML = `
-    <div class="row" style="gap:8px">
-      <span class="pill">${t("pollen")} <b>${fmtInt(state.pollen)}</b>/<b>${fmtInt(state.pollenCap)}</b></span>
-      <span class="pill">${t("honey")} <b>${fmtInt(state.honey)}</b></span>
-      <span class="pill">${t("bees")} <b>${fmtInt(state.bees)}</b></span>
-      <span class="pill"><b>${mantisLine}</b></span>
-      <span class="pill"><b>${instaLine}</b></span>
-      <span class="pill"><b>${autoLine}</b></span>
+  <div class="row" style="gap:8px">
+    <span class="pill">${t("pollen")} <b>${fmtInt(state.pollen)}</b>/<b>${fmtInt(state.pollenCap)}</b></span>
+    <span class="pill">${t("honey")} <b>${fmtInt(state.honey)}</b></span>
+    <span class="pill">${t("bees")} <b>${fmtInt(state.bees)}</b></span>
+    <span class="pill"><b>${mantisLine}</b></span>
+    <span class="pill"><b>${instaLine}</b></span>
+    <span class="pill"><b>${autoLine}</b></span>
     </div>
   `;
+
 }
 
 function drawHive(){
