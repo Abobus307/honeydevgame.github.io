@@ -1031,9 +1031,7 @@ function aiSteer(dt, ts){
   const nd = nearestDrop(p.x, p.y);
   const hasDrop = !!nd.d;
 
-  const wantHive = (state.instaOwned && state.instaEnabled)
-    ? (state.pollen > 0)
-    : (state.pollen >= state.pollenCap * 0.9);
+  const wantHive = state.pollen >= state.pollenCap;
 
   let desired = state.autoMode;
 
