@@ -179,7 +179,6 @@
       cursor:pointer;
     }
     
-    /* Управление для телефона */
     .touch-controls {
       position: fixed;
       bottom: 20px;
@@ -263,7 +262,6 @@
       }
     }
     
-    /* Кнопка админ-панели для телефона */
     .admin-toggle {
       position: fixed;
       top: 10px;
@@ -281,14 +279,18 @@
       user-select: none;
       opacity: 0.7;
       transition: opacity 0.3s;
-      display: none;
+      display: block;
     }
     
     .admin-toggle:hover {
       opacity: 1;
     }
     
-    /* Мобильная админ-панель */
+    .admin-toggle.disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    
     .mobile-admin {
       position: fixed;
       top: 0;
@@ -338,13 +340,28 @@
       text-transform: uppercase;
       letter-spacing: 1px;
     }
+    
+    .countdown {
+      position: fixed;
+      top: 50px;
+      right: 10px;
+      background: rgba(251, 191, 36, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      color: rgba(251, 191, 36, 0.9);
+      padding: 4px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: bold;
+      z-index: 1003;
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <!-- Кнопка для открытия админ-панели на телефоне -->
-  <div class="admin-toggle" id="mobileAdminToggle">Fun</div>
+  <div class="countdown" id="countdown"></div>
   
-  <!-- Мобильная админ-панель -->
+  <div class="admin-toggle disabled" id="mobileAdminToggle">Fun</div>
+  
   <div class="mobile-admin" id="mobileAdminPanel">
     <div class="mobile-admin-header">
       <h2>Fun Panel</h2>
@@ -371,7 +388,6 @@
     <div class="status" id="mobileAdminStatus" style="margin-top:20px"></div>
   </div>
   
-  <!-- Сенсорное управление -->
   <div class="touch-controls">
     <div class="touch-stick" id="touchStick">
       <div class="touch-stick-knob" id="touchKnob"></div>
@@ -470,7 +486,7 @@
 "use strict";
 
 const $ = (q) => document.querySelector(q);
-const STORE_KEY = "honey_meadow_save_v13";
+const STORE_KEY = "honey_meadow_save_v14";
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fmtInt = (n) => String(Math.max(0, Math.floor(Number(n) || 0)));
 
@@ -677,12 +693,10 @@ const state = {
   uiLastHoneyRendered: -1,
   uiLastBadgeKey: "",
   uiTab: "shop",
-  // Для сенсорного управления
   touch: { active: false, x: 0, y: 0, stickX: 0, stickY: 0 },
-  // Для админ-панели телефона
   adminUnlocked: false,
-  adminClickTime: 0,
-  adminClickCount: 0
+  adminTimer: null,
+  adminTimeLeft: 0
 };
 
 const canvas = document.getElementById("game");
@@ -860,7 +874,8 @@ function persist(){
     beePower: state.beePower,
     instaOwned: state.instaOwned,
     instaEnabled: state.instaEnabled,
-    stats: state.stats
+    stats: state.stats,
+    adminUnlocked: state.adminUnlocked
   };
   localStorage.setItem(STORE_KEY, JSON.stringify(saveData));
 }
@@ -896,6 +911,8 @@ function load(){
       state.stats.honeyFromAdmin = Number(data.stats.honeyFromAdmin) || 0;
       state.stats.honeySpent = Number(data.stats.honeySpent) || 0;
     }
+
+    state.adminUnlocked = !!data.adminUnlocked;
 
     state.pollenCap = clamp(state.pollenCap, 30, LIMITS.pollenCapMax);
     state.moveSpeed = clamp(state.moveSpeed, 190, LIMITS.moveSpeedMax);
@@ -1167,6 +1184,17 @@ function syncUI(forceAll){
     renderBadges();
     state.uiLastBadgeKey = badgeKey;
   }
+  
+  const toggleBtn = $("#mobileAdminToggle");
+  if(toggleBtn) {
+    if(state.adminUnlocked) {
+      toggleBtn.classList.remove("disabled");
+      toggleBtn.textContent = state.lang === "ru" ? "Fun ✓" : "Fun ✓";
+    } else {
+      toggleBtn.classList.add("disabled");
+      toggleBtn.textContent = "Fun";
+    }
+  }
 }
 
 function setTab(tab){
@@ -1367,7 +1395,6 @@ function autoBuyTick(ts){
 }
 
 function step(dt, ts){
-  // Обработка сенсорного управления
   if(state.touch.active && !state.autoPlay){
     const p = state.player;
     const stickRadius = 50;
@@ -1863,7 +1890,6 @@ function bindControls(){
     state.keys.space = false;
   });
   
-  // Сенсорное управление
   const touchStick = $("#touchStick");
   const touchKnob = $("#touchKnob");
   const touchAction = $("#touchAction");
@@ -1926,7 +1952,6 @@ function bindControls(){
       }
     }
     
-    // Мышь для тестирования на ПК
     touchStick.addEventListener("mousedown", (e) => {
       e.preventDefault();
       state.touch.active = true;
@@ -1969,7 +1994,6 @@ function bindControls(){
       touchAction.classList.remove("active");
     });
     
-    // Мышь для тестирования
     touchAction.addEventListener("mousedown", (e) => {
       e.preventDefault();
       state.touch.space = true;
@@ -2076,38 +2100,54 @@ function toggleInsta(){
   syncUI(true);
 }
 
+function startAdminTimer(){
+  if(state.adminUnlocked) return;
+  
+  if(state.adminTimer) {
+    clearInterval(state.adminTimer);
+    $("#countdown").style.display = "none";
+  }
+  
+  state.adminTimeLeft = 15;
+  $("#countdown").style.display = "block";
+  $("#countdown").textContent = `${state.adminTimeLeft} сек`;
+  
+  state.adminTimer = setInterval(() => {
+    state.adminTimeLeft--;
+    $("#countdown").textContent = `${state.adminTimeLeft} сек`;
+    
+    if(state.adminTimeLeft <= 0) {
+      clearInterval(state.adminTimer);
+      state.adminTimer = null;
+      $("#countdown").style.display = "none";
+      
+      state.adminUnlocked = true;
+      persist();
+      syncUI(true);
+      
+      adminStatusOk("Fun Panel разблокирована!", true);
+      
+      setTimeout(() => {
+        if($("#mobileAdminStatus")){
+          $("#mobileAdminStatus").className = "status";
+          $("#mobileAdminStatus").textContent = "";
+        }
+      }, 2000);
+    }
+  }, 1000);
+}
+
 function setupAdminToggle(){
-  // Простой клик по заголовку (15 секунд)
   const title = $("#titleText");
-  let unlockTimeout = null;
   
   title.addEventListener("click", (e) => {
-    if(unlockTimeout) {
-      clearTimeout(unlockTimeout);
-      unlockTimeout = null;
-      return;
-    }
-    
-    state.adminClickTime = Date.now();
-    state.adminClickCount = 1;
-    
-    unlockTimeout = setTimeout(() => {
-      // Проверяем, прошло ли 15 секунд
-      if(Date.now() - state.adminClickTime >= 15000) {
-        // Разблокируем админ-панель
-        $("#mobileAdminToggle").style.display = "block";
-        adminStatusOk("Fun Panel разблокирована!", true);
-        
-        setTimeout(() => {
-          if($("#mobileAdminStatus")){
-            $("#mobileAdminStatus").className = "status";
-            $("#mobileAdminStatus").textContent = "";
-          }
-        }, 2000);
-      }
-      unlockTimeout = null;
-    }, 15100); // На 100мс больше для надёжности
+    startAdminTimer();
   });
+  
+  if(state.adminUnlocked) {
+    $("#mobileAdminToggle").classList.remove("disabled");
+    $("#mobileAdminToggle").textContent = state.lang === "ru" ? "Fun ✓" : "Fun ✓";
+  }
 }
 
 function bindUI(){
@@ -2212,9 +2252,12 @@ function bindUI(){
     persist();
   });
   
-  // Мобильная админ-панель
   $("#mobileAdminToggle").addEventListener("click", () => {
-    setMobileAdminVisible(true);
+    if(state.adminUnlocked) {
+      setMobileAdminVisible(true);
+    } else {
+      adminStatusBad("Нажми на заголовок 'Honey Meadow' и подожди 15 секунд", true);
+    }
   });
   
   $("#mobileAdminClose").addEventListener("click", () => {
